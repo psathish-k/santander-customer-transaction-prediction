@@ -21,8 +21,35 @@ def read_data(data):
     data = pd.read_csv(data)
     return data
 
-@st.cache
+def check_data(test_data):
+    dtype_lst = ['object', 'bool', 'datetime64']
+    col_lst = []
+    for column in test_data.columns:
+        if column == 'ID_code':
+            continue
+        elif test_data.dtypes[column] in dtype_lst:
+            col_lst.append(column)
+            
+    if test_data.shape[1] != 201:
+        st.error('Error: Input data mismatch. Expected 201 columns. Please refer sample input.')
+        return 0
+
+    elif 'ID_code' not in test_data.columns:
+        st.error("Error: Input data mismatch. Column 'ID_code' does not exist. Please refer sample input.")
+        return 0
+    
+    elif len(col_lst) !=0:
+        st.error ('Error: Input data mismatch. Following column(s) are non int/float data type. Please refer sample input.')
+        st.error(col_lst)
+        return 0
+    
+    else: return 1
+    
 def preprocessing(df):
+    null_col = df.columns[df.isna().any()].tolist()
+    if len(null_col):
+        st.write('Following columns has null values and will be imputed with median value.')
+        st.write(null_col)
     for column in df.columns:
         df[column].fillna(df[column].median(), inplace=True)
     return df
@@ -62,20 +89,24 @@ if st.checkbox('Show sample input'):
 data = st.file_uploader('Upload file to obtain predictions', type=['csv'])
 
 if data is not None:
+    st.success('Upload sucessful!')
     test_data = read_data(data)
-    id_code = test_data['ID_code']
-    df = test_data.drop(['ID_code'], axis=1)
+    validated = check_data(test_data)
+    
+    if validated:
+        if st.checkbox('Show uploaded file'):
+            st.write(test_data)
         
-    model_FE = joblib.load('LGBM_MulClassifier.pkl')
-    model_pred = joblib.load('LGBM_BiClassifierFE.pkl')
+        if st.button('Predict'):
+            id_code = test_data['ID_code']
+            df = test_data.drop(['ID_code'], axis=1)
+                
+            model_FE = joblib.load('LGBM_MulClassifier.pkl')
+            model_pred = joblib.load('LGBM_BiClassifierFE.pkl')
         
-    if st.checkbox('Show uploaded file'):
-        st.write(test_data)
-            
-    if st.button('Predict'):
-        df = preprocessing(df)
-        df_new = feature_engineering(model_FE, df)
-        df_prediction = prediction(model_pred, df_new)
-        df_prediction = pd.concat([id_code, df_prediction], axis=1)
-        st.write(df_prediction)
-        st.download_button('Download', export_df(df_prediction), key='download-csv')
+            df = preprocessing(df)
+            df_new = feature_engineering(model_FE, df)
+            df_prediction = prediction(model_pred, df_new)
+            df_prediction = pd.concat([id_code, df_prediction], axis=1)
+            st.write(df_prediction)
+            st.download_button('Download', export_df(df_prediction), key='download-csv')
