@@ -62,24 +62,20 @@ if st.checkbox('Show sample input'):
 data = st.file_uploader('Upload file to obtain predictions', type=['csv'])
 
 if data is not None:
-    try:
-        test_data = read_data(data)
-        id_code = test_data['ID_code']
-        df = test_data.drop(['ID_code'], axis=1)
+    test_data = read_data(data)
+    id_code = test_data['ID_code']
+    df = test_data.drop(['ID_code'], axis=1)
         
-        model_FE = joblib.load('LGBM_MulClassifier.pkl')
-        model_pred = joblib.load('LGBM_BiClassifierFE.pkl')
+    model_FE = joblib.load('LGBM_MulClassifier.pkl')
+    model_pred = joblib.load('LGBM_BiClassifierFE.pkl')
         
-        if st.checkbox('Show uploaded file'):
-            st.write(test_data.head())
+    if st.checkbox('Show uploaded file'):
+        st.write(test_data.head())
             
-        if st.button('Predict'):
-            df = preprocessing(df)
-            df_new = feature_engineering(model_FE, df)
-            df_prediction = prediction(model_pred, df_new)
-            df_prediction = pd.concat([id_code, df_prediction], axis=1)
-            st.write(df_prediction)
-            st.download_button('Download', export_df(df_prediction), key='download-csv')
-    except:
-        st.write('Error: Input data mismatch. Please refer sample input')
-            
+    if st.button('Predict'):
+        df = preprocessing(df)
+        df_new = feature_engineering(model_FE, df)
+        df_prediction = prediction(model_pred, df_new)
+        df_prediction = pd.concat([id_code, df_prediction], axis=1)
+        st.write(df_prediction)
+        st.download_button('Download', export_df(df_prediction), key='download-csv')
