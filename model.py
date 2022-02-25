@@ -70,7 +70,7 @@ if data is not None:
     model_pred = joblib.load('LGBM_BiClassifierFE.pkl')
         
     if st.checkbox('Show uploaded file'):
-        st.write(test_data.head())
+        st.write(test_data)
             
     if st.button('Predict'):
         df = preprocessing(df)
