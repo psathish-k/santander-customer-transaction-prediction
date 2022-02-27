@@ -1,3 +1,4 @@
+#Importing required libraries
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -6,6 +7,7 @@ from sklearn.decomposition import PCA
 import joblib
 
 @st.cache
+#Function to create sample input data
 def sample_data():
     col = ['ID_code']
     for i in range(200):
@@ -17,24 +19,26 @@ def sample_data():
     return samp_data
 
 @st.cache
+#Function to read .csv file
 def read_data(data):
     data = pd.read_csv(data)
     return data
 
+#Function to check errors in input data
 def check_data(test_data):
     dtype_lst = ['object', 'bool', 'datetime64']
     col_lst = []
-    for column in test_data.columns:
+    for column in test_data.columns:#check if dtype is float64 or int64
         if column == 'ID_code':
             continue
         elif test_data.dtypes[column] in dtype_lst:
             col_lst.append(column)
             
-    if test_data.shape[1] != 201:
+    if test_data.shape[1] != 201:#check if input data has same 201 columns
         st.error('Error: Input data mismatch. Expected 201 columns. Please refer sample input.')
         return 0
 
-    elif 'ID_code' not in test_data.columns:
+    elif 'ID_code' not in test_data.columns:#check if ID_code column is present
         st.error("Error: Input data mismatch. Column 'ID_code' does not exist. Please refer sample input.")
         return 0
     
@@ -44,17 +48,23 @@ def check_data(test_data):
         return 0
     
     else: return 1
-    
+
+#Function to preprocess input data
 def preprocessing(df):
     null_col = df.columns[df.isna().any()].tolist()
     if len(null_col):
         st.write('Following columns has null values and will be imputed with median value.')
         st.write(null_col)
     for column in df.columns:
-        df[column].fillna(df[column].median(), inplace=True)
+        df[column].fillna(df[column].median(), inplace=True)#impute median values for missing data
+        high = df[column].mean() + 3*df[column].std()
+        low = df[column].mean() - 3*df[column].std()
+        df[column] = np.where(df[column] > high, high,
+                              np.where(df[column] < low, low, df[column]))#Capping data to lie within 3 standard deviation
     return df
 
 @st.cache
+#Function to create new features
 def feature_engineering(model, df):
     #Predicting 4 class probabilities using model_2_ and adding to train set
     predict_prob = model.predict_proba(df)
@@ -72,13 +82,15 @@ def feature_engineering(model, df):
     
     return df_new
 
-@st.cache    
+@st.cache
+#Function to predict on input data
 def prediction(model, df):
     pred = model.predict(df)
     pred = pd.DataFrame(pred, columns=['Prediction'])
     return pred
 
 @st.cache
+#Function to export data
 def export_df(df):
     return df.to_csv()
 
@@ -90,8 +102,8 @@ data = st.file_uploader('Upload file to obtain predictions', type=['csv'])
 
 if data is not None:
     st.success('Upload sucessful!')
-    test_data = read_data(data)
-    validated = check_data(test_data)
+    test_data = read_data(data)#Function call
+    validated = check_data(test_data)#Function call
     
     if validated:
         if st.checkbox('Show uploaded file'):
@@ -101,12 +113,12 @@ if data is not None:
             id_code = test_data['ID_code']
             df = test_data.drop(['ID_code'], axis=1)
                 
-            model_FE = joblib.load('LGBM_MulClassifier.pkl')
-            model_pred = joblib.load('LGBM_BiClassifierFE.pkl')
+            model_FE = joblib.load('LGBM_MulClassifier.pkl')#load model
+            model_pred = joblib.load('LGBM_BiClassifierFE.pkl')#load model
         
-            df = preprocessing(df)
-            df_new = feature_engineering(model_FE, df)
-            df_prediction = prediction(model_pred, df_new)
+            df = preprocessing(df)#Function call
+            df_new = feature_engineering(model_FE, df)#Function call
+            df_prediction = prediction(model_pred, df_new)#Function call
             df_prediction = pd.concat([id_code, df_prediction], axis=1)
             st.write(df_prediction)
             st.download_button('Download', export_df(df_prediction), key='download-csv')
